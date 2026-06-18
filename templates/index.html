@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArgusAI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body class="bg-[#140604]" style="font-family:'Sora', sans-serif;">
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <div class="flex-1 flex-col justify-center py-8 lg:py-0">
+      <div class="flex items-center mx-6 lg:mx-12 my-8 gap-5">
+        <div class="grid bg-red-900 rounded-xl place-items-center h-[40px] w-[40px] text-white shrink-0">A</div>
+        <h4 class="text-[#D97736] text-xl font-bold leading-normal">Argus AI</h4>
+      </div>
+      <div class="text-[#D97736] text-4xl lg:text-6xl font-bold leading-tight px-6 lg:px-12 pt-4"
+        style="font-family:'Sora', sans-serif;">
+        Analyze your data,</div>
+      <h1 class="text-amber-500 text-4xl lg:text-6xl font-bold leading-tight mb-8 px-6 lg:px-12"
+        style="font-family:'Sora', sans-serif;">
+        without the noise.</h1>
+      <p class="text-[#9a7060] text-lg lg:text-xl mx-6 lg:mx-12 my-4">
+        Upload a CSV and let our multi-agent pipeline perform analysis, causal reasoning, and dashboard generation
+        automatically.
+      </p>
+      <div
+        class="mx-6 lg:mx-12 my-4 px-6 lg:px-8 py-4 mb-4 lg:mb-8 w-auto lg:w-[620px] max-w-full bg-[#24100A] border border-[#C97A3B] text-[#7A5444] rounded-xl">
+        🛡️ PII anonymization enabled - No PII Leakage risk
+      </div>
+      <div
+        class="mx-6 lg:mx-12 my-4 px-6 lg:px-8 py-4 w-auto lg:w-[620px] max-w-full mb-4 lg:mb-8 bg-[#24100A] border border-[#C97A3B] text-[#7A5444] rounded-xl">
+        ⚡Multi agent pipeline - Data Analysis, Reasoning, Report and Dashboard
+      </div>
+      <div
+        class="mx-6 lg:mx-12 my-4 px-6 lg:px-8 py-4 w-auto lg:w-[620px] max-w-full mb-8 bg-[#24100A] border border-[#C97A3B] text-[#7A5444] rounded-xl">
+        🔍 Causal Reasoning, not just Correlation
+      </div>
+    </div>
+    <div id="upload-screen"
+      class="flex flex-col items-center lg:items-start bg-[#24100A] w-full lg:w-[750px] max-w-full border-t lg:border-t-0 lg:border-l border-[#3d2318] py-12 lg:py-0">
+      <h2 class="text-[#f5d9c8] text-2xl font-semibold lg:ps-20 lg:pt-28 py-4 text-center lg:text-left">Start analyzing.
+        . . .</h2>
+      <p class="text-[#9a7060] text-sm lg:ps-20 mb-6 lg:mb-0 text-center lg:text-left">Upload a CSV to begin the
+        pipeline</p>
+      <a href="http://localhost:7860/sample_sales"
+        class="flex items-center justify-center h-[40px] w-[90%] lg:w-[500px] max-w-[500px] bg-[#2E1A10] border border-[#C97A3B] text-[#D97736] text-sm lg:mt-4 lg:ms-20 rounded-lg hover:bg-[#3a241a] hover:border-[#D97736] hover:text-[#ff9955] transition duration-200">
+        📥 Download sample_sales.csv
+      </a>
+      <p class="text-[#9a7060] font-bold text-[13.5px] mt-8 lg:ps-20 w-[90%] max-w-[500px] lg:w-auto text-left">CSV FILE
+      </p>
+      <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+        class="grid place-items-center bg-[#24100A] w-[90%] lg:w-[500px] max-w-[500px] h-[250px] mt-4 lg:m-4 lg:ms-20 px-6 lg:px-16 border border-[#C97A3B] text-[#7A5244] border-2 hover:border-[#ff9955] transition cursor-pointer border-dashed rounded-2xl">
+        <div class="text-center">
+          <div class="text-5xl">⇪</div>
+          <p id="drop-label" class="mt-2">Click a file or drop</p>
+          <p class="text-[#7A5444] text-xs mt-2">(Max 100MB)</p>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept=".csv" class="hidden">
+      <button id="start-btn" onclick="startAnalysis()" class="bg-[#c4622d] text-[#f5d9c8] h-[50px] w-[90%] lg:w-[500px] max-w-[500px] lg:ms-20 mt-4 rounded-xl font-semibold hover:bg-[#d97736]
+transition-all duration-200">
+        Start Analysis →
+      </button>
+      <p id="upload-error" class="text-red-400 text-sm lg:ms-8 mt-3 hidden"></p>
+    </div>
+  </div>
+  <div id="processing-screen"
+    class="hidden fixed inset-0 flex flex-col items-center justify-center min-h-screen bg-[#140604]">
+    <h2 class="text-[#f5d9c8] text-2xl font-semibold mb-8">Pipeline Running...</h2>
+    <div id="status-label" class="text-[#9a7060] text-sm mb-8">Uploading file…</div>
+    <div class="flex flex-col gap-4">
+      <div id="step-uploading" class="flex items-center gap-3 text-[#f5d9c8]"><span class="step-icon">⏳</span> Uploading
+      </div>
+      <div id="step-processing" class="flex items-center gap-3 text-[#7A5444]"><span class="step-icon">○</span>
+        Processing</div>
+      <div id="step-report" class="flex items-center gap-3 text-[#7A5444]"><span class="step-icon">○</span> Report
+        Approval</div>
+      <div id="step-dashboard" class="flex items-center gap-3 text-[#7A5444]"><span class="step-icon">○</span> Dashboard
+        Approval</div>
+    </div>
+  </div>
+  <div id="report-screen"
+    class="hidden fixed inset-0 flex flex-col items-center justify-center min-h-screen bg-[#140604] px-8">
+    <h2 class="text-[#f5d9c8] text-2xl font-semibold mb-4">Review Report</h2>
+    <pre id="report-content"
+      class="bg-[#24100A] border border-[#3d2318] text-[#9a7060] text-sm p-6 rounded-xl w-full max-w-[700px] overflow-auto max-h-[400px] whitespace-pre-wrap"></pre>
+    <textarea id="report-feedback" placeholder="Feedback (optional)..."
+      class="bg-[#2E1A10] border border-[#C97A3B] text-[#f5d9c8] text-sm p-3 rounded-xl w-full max-w-[700px] mt-4 h-[80px]"></textarea>
+    <div class="flex gap-4 mt-4">
+      <button onclick="approvereport(true)"
+        class="bg-[#c4622d] text-[#f5d9c8] px-6 py-2 rounded-xl font-semibold hover:bg-[#d97736]">✅ Approve</button>
+      <button onclick="approvereport(false)"
+        class="bg-[#2E1A10] border border-[#C97A3B] text-[#D97736] px-6 py-2 rounded-xl font-semibold hover:bg-[#3a241a]">❌
+        Reject</button>
+    </div>
+  </div>
+  <div id="dashboard-screen"
+    class="hidden fixed inset-0 flex flex-col items-center justify-center min-h-screen bg-[#140604] px-8">
+    <h2 class="text-[#f5d9c8] text-2xl font-semibold mb-4">Review Charts</h2>
+    <div id="dashboard-chart"
+      class="bg-[#24100A] border border-[#3d2318] text-[#9a7060] text-sm p-6 rounded-xl w-full max-w-[700px] overflow-auto max-h-[400px]">
+    </div>
+    <textarea id="dashboard-feedback" placeholder="Feedback (optional)..."
+      class="bg-[#2E1A10] border border-[#C97A3B] text-[#f5d9c8] text-sm p-3 rounded-xl w-full max-w-[700px] mt-4 h-[80px]"></textarea>
+    <div class="flex gap-4 mt-4">
+      <button onclick="approvedashboard(true)"
+        class="bg-[#c4622d] text-[#f5d9c8] px-6 py-2 rounded-xl font-semibold hover:bg-[#d97736]">✅ Approve</button>
+      <button onclick="approvedashboard(false)"
+        class="bg-[#2E1A10] border border-[#C97A3B] text-[#D97736] px-6 py-2 rounded-xl font-semibold hover:bg-[#3a241a]">❌
+        Reject</button>
+    </div>
+  </div>
+  <div id="completed-screen"
+    class="hidden fixed inset-0 flex flex-col items-center justify-center min-h-screen bg-[#140604] px-8">
+    <h2 class="text-[#f5d9c8] text-2xl font-semibold mb-8">✅ Analysis Complete!</h2>
+    <div class="flex gap-4 mb-8">
+      <a id="dl-report" href="outputs/report.pdf"
+        class="bg-[#c4622d] text-[#f5d9c8] px-6 py-2 rounded-xl font-semibold hover:bg-[#d97736]">⬇ Download Report</a>
+      <a id="dl-dashboard" href="outputs/dashboard.html"
+        class="bg-[#2E1A10] border border-[#C97A3B] text-[#D97736] px-6 py-2 rounded-xl font-semibold hover:bg-[#3a241a]">⬇
+        Download Dashboard</a>
+    </div>
+    <h3 class="text-[#f5d9c8] font-semibold mb-4">Chat with ArgusAI</h3>
+    <div id="chat-messages"
+      class="hidden flex flex-col gap-2 bg-[#24100A] border border-[#3d2318] w-full max-w-[700px] h-[300px] overflow-y-auto p-4 rounded-xl mb-4">
+    </div>
+    <div class="flex gap-2 w-full max-w-[700px]">
+      <input id="chat-input" type="text" placeholder="Ask something about your data..."
+        class="flex-1 bg-[#2E1A10] border border-[#C97A3B] text-[#f5d9c8] text-sm px-4 py-2 rounded-xl" />
+      <button onclick="sendchat()"
+        class="bg-[#c4622d] text-[#f5d9c8] px-4 py-2 rounded-xl font-semibold hover:bg-[#d97736]">Send</button>
+    </div>
+    <button onclick="resetApp()" class="mt-6 text-[#9a7060] text-sm underline hover:text-[#f5d9c8]">Start over</button>
+  </div>
+</body>
+
+</html>
+<script>
+  if (typeof marked === 'undefined') {
+    window.marked = { parse: (text) => `<p>${text}</p>` };
+  }
+  let selectedFile = null;
+  let API = "http://localhost:7860"
+  let jobid = null;
+  let interval = null;
+  let noDashboard = false;
+  let reportApproved = false;
+  let dashboardApproved = false;
+  const fileInput = document.getElementById("file-input");
+  const dropZone = document.getElementById("drop-zone");
+  const dropLabel = document.getElementById("drop-label");
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) {
+      selectFile(fileInput.files[0]);
+    }
+  });
+  function selectFile(file) {
+    if (!file.name.endsWith(".csv")) {
+      alert("Only csv files!!");
+      return;
+    }
+    selectedFile = file;
+    dropLabel.textContent = "✔ " + file.name;
+  }
+  async function startAnalysis() {
+    if (!selectedFile) {
+      alert("Only csv files!!");
+      return;
+    }
+    updateStepUI("uploading");
+    const fd = new FormData();
+    fd.append("data", selectedFile)
+    const res = await fetch(`${API}/upload`, {
+      method: "POST",
+      body: fd
+    });
+    const data = await res.json();
+    jobid = data.job_id;
+    show("processing-screen");
+    pollStatus();
+  }
+  async function pollStatus() {
+    if (interval) clearInterval(interval);
+    interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API}/status/${jobid}`);
+        const data = await res.json();
+        console.log(`[POLL] Status: ${data.status}, has error: ${!!data.error}`)
+
+        if (data.status == "processing") {
+          console.log("[POLL] -> processing");
+          if (dashboardApproved) {
+            updateStepUI("processing_final");
+          } else if (reportApproved) {
+            updateStepUI("processing_dashboard");
+          } else {
+            updateStepUI("processing");
+          }
+        }
+        else if (data.status == "pending_report") {
+          console.log("[POLL] -> pending_report, loading report...");
+          clearInterval(interval);
+          updateStepUI("report");
+          loadReport();
+        }
+        else if (data.status == "pending_dashboard") {
+          console.log("[POLL] -> pending_dashboard, loading dashboard...");
+          clearInterval(interval);
+          if (data.dashboard_available === false) {
+            console.log("[POLL] Dashboard not available, skipping approval...");
+            updateStepUI("dashboard");
+            setTimeout(() => pollStatus(), 2000);
+            return;
+          }
+          updateStepUI("dashboard");
+          loadDashboard();
+        }
+        else if (data.status == "completed") {
+          console.log("[POLL] -> completed");
+          clearInterval(interval);
+          showCompleted();
+        }
+        else if (data.status == 'failed') {
+          console.log("[POLL] -> failed");
+          clearInterval(interval);
+          const errorMsg = data.error || "Pipeline failed";
+          document.body.innerHTML = `<div style="color: red; padding: 20px; font-weight: bold; text-align: center; margin-top: 50px;">❌ ${errorMsg}<br><br>Redirecting to home...</div>`;
+          setTimeout(() => { window.location.href = "/"; }, 3000);
+        }
+      } catch (err) {
+        clearInterval(interval);
+        console.error("Poll error:", err);
+        document.body.innerHTML = `<div style="color: red; padding: 20px; font-weight: bold; text-align: center; margin-top: 50px;">❌ Error: ${err.message}<br><br>Redirecting to home...</div>`;
+        setTimeout(() => { window.location.href = "/"; }, 3000);
+      }
+    }, 2000);
+  }
+  async function loadReport() {
+    try {
+      const res = await fetch(`${API}/report/${jobid}`);
+      const data = await res.json();
+      if (data.error) {
+        document.body.innerHTML = `<div style="color: red; padding: 20px; font-weight: bold; text-align: center; margin-top: 50px;">❌ Error: ${data.error}<br><br>Redirecting to home...</div>`;
+        setTimeout(() => { window.location.href = "/"; }, 3000);
+        return;
+      }
+      const reportText = typeof data.report === "string" ? data.report : JSON.stringify(data.report, null, 2);
+      document.getElementById("report-content").innerHTML = marked.parse(reportText);
+      document.querySelector("button[onclick='approvereport(true)']").disabled = false;
+      document.querySelector("button[onclick='approvereport(false)']").disabled = false;
+      document.getElementById("report-feedback").value = "";
+      show("report-screen");
+    } catch (err) {
+      console.error("Error loading report:", err);
+      document.body.innerHTML = `<div style="color: red; padding: 20px; font-weight: bold; text-align: center; margin-top: 50px;">❌ Error: ${err.message}<br><br>Redirecting to home...</div>`;
+      setTimeout(() => { window.location.href = "/"; }, 3000);
+    }
+  }
+  function updateStepUI(step) {
+    const sequence = ["uploading", "processing", "report", "processing_dashboard", "dashboard", "processing_final", "completed"];
+    const statusLabels = {
+      "uploading": "Uploading file…",
+      "processing": "🔄 Processing pipeline...",
+      "report": "⏸️ Awaiting report approval...",
+      "processing_dashboard": "🔄 Generating dashboard...",
+      "dashboard": "⏸️ Awaiting dashboard approval...",
+      "processing_final": "🔄 Finalizing analysis...",
+      "completed": "✅ Analysis Complete!"
+    };
+
+    const labelEl = document.getElementById("status-label");
+    if (labelEl) labelEl.textContent = statusLabels[step] || statusLabels["processing"];
+
+    const uiNodes = [
+      { id: "uploading", index: 0 },
+      { id: "processing", index: 1 },
+      { id: "report", index: 2 },
+      { id: "dashboard", index: 4 }
+    ];
+
+    let currentIndex = sequence.indexOf(step);
+
+    uiNodes.forEach(node => {
+      const el = document.getElementById(`step-${node.id}`);
+      if (!el) return;
+      const icon = el.querySelector(".step-icon");
+
+      let isCurrent = (node.index === currentIndex) || (currentIndex === 3 && node.id === "dashboard");
+      let isCompleted = node.index < currentIndex;
+
+      if (isCurrent) {
+        el.classList.add("text-[#f5d9c8]");
+        el.classList.remove("text-[#7A5444]");
+        if (icon) icon.textContent = "⏳";
+      } else if (isCompleted) {
+        el.classList.remove("text-[#f5d9c8]");
+        el.classList.add("text-[#7A5444]");
+        if (icon) icon.textContent = "✅";
+      } else {
+        el.classList.add("text-[#7A5444]");
+        el.classList.remove("text-[#f5d9c8]");
+        if (icon) icon.textContent = "○";
+      }
+    });
+  }
+  async function loadDashboard() {
+    try {
+      const res = await fetch(`${API}/dashboard/${jobid}`);
+      const data = await res.json();
+      const container = document.getElementById("dashboard-chart");
+      if (data.dashboard_available === false || !data.dashboard || data.dashboard === '[]') {
+        console.log("[DASHBOARD] Not available, auto-approving...");
+        noDashboard = true;
+        dashboardApproved = true;
+        await fetch(`${API}/approve_dashboard/${jobid}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approved: true, feedback: "Auto-approved: no charts available" })
+        });
+        show("processing-screen");
+        updateStepUI("processing_final");
+        setTimeout(() => pollStatus(), 3000);
+        return;
+      }
+
+      if (data.error) {
+        console.log("[DASHBOARD] Error loading dashboard, auto-approving...");
+        noDashboard = true;
+        dashboardApproved = true;
+        await fetch(`${API}/approve_dashboard/${jobid}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approved: true, feedback: "Auto-approved: dashboard error" })
+        });
+        show("processing-screen");
+        updateStepUI("processing_final");
+        setTimeout(() => pollStatus(), 3000);
+        return;
+      }
+      let charts = [];
+      try { charts = JSON.parse(data.dashboard); } catch (e) { charts = []; }
+
+      if (!Array.isArray(charts) || charts.length === 0) {
+        console.log("[DASHBOARD] No valid charts, auto-approving...");
+        noDashboard = true;
+        dashboardApproved = true;
+        await fetch(`${API}/approve_dashboard/${jobid}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approved: true, feedback: "Auto-approved: no chart recommendations" })
+        });
+        show("processing-screen");
+        updateStepUI("processing_final");
+        setTimeout(() => pollStatus(), 3000);
+        return;
+      }
+      let html = `<div style="font-family:'Sora',sans-serif; display:flex; flex-direction:column; gap:10px;">`;
+      html += `<p style="color:#D97736; font-size:14px; font-weight:600; margin-bottom:4px;">Recommended Charts (${charts.length})</p>`;
+
+      charts.forEach((chart, i) => {
+        const type = chart.chart_type || 'N/A';
+        const x = chart.x || 'N/A';
+        const y = chart.y || '—';
+        const z = chart.z || null;
+        const color = chart.color || '—';
+        const priority = chart.priority || '—';
+        const reason = chart.reason || '—';
+
+        html += `<div style="background:#2E1A10; border:1px solid #3d2318; border-radius:10px; padding:12px 16px;">`;
+        html += `  <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">`;
+        html += `    <span style="background:#c4622d; color:#f5d9c8; font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px;">${i + 1}</span>`;
+        html += `    <span style="color:#f5d9c8; font-size:14px; font-weight:600;">${type}</span>`;
+        if (priority !== '—') html += `    <span style="margin-left:auto; color:#D97736; font-size:11px; border:1px solid #D97736; padding:1px 8px; border-radius:6px;">Priority: ${priority}</span>`;
+        html += `  </div>`;
+        html += `  <div style="display:flex; flex-wrap:wrap; gap:6px 16px; color:#9a7060; font-size:12px;">`;
+        html += `    <span><b style="color:#D97736">x:</b> ${x}</span>`;
+        html += `    <span><b style="color:#D97736">y:</b> ${y}</span>`;
+        if (z) html += `    <span><b style="color:#D97736">z:</b> ${z}</span>`;
+        html += `    <span><b style="color:#D97736">color:</b> ${color}</span>`;
+        html += `  </div>`;
+        if (reason !== '—') html += `  <div style="color:#7A5444; font-size:11px; margin-top:6px; font-style:italic;">💡 ${reason}</div>`;
+        html += `</div>`;
+      });
+
+      html += `</div>`;
+      container.innerHTML = html;
+      document.querySelector("button[onclick='approvedashboard(true)']").disabled = false;
+      document.querySelector("button[onclick='approvedashboard(false)']").disabled = false;
+      document.getElementById("dashboard-feedback").value = "";
+      show("dashboard-screen");
+    } catch (err) {
+      console.error("Error loading dashboard:", err);
+      document.getElementById("dashboard-chart").innerHTML = `<div style="color: red; padding: 20px; font-weight: bold;">❌ Error: ${err.message}</div>`;
+      setTimeout(() => showCompleted(), 2000);
+    }
+  }
+
+  async function approvereport(approved) {
+    if (approved) reportApproved = true;
+    const feedback = document.getElementById("report-feedback").value;
+    document.querySelector("button[onclick='approvereport(true)']").disabled = true;
+    document.querySelector("button[onclick='approvereport(false)']").disabled = true;
+    console.log("[APPROVAL] Sending report approval...");
+    const res = await fetch(`${API}/approve_report/${jobid}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved, feedback })
+    });
+    const data = await res.json();
+    console.log("[APPROVAL] Report approved, waiting 3s for backend to process...");
+
+    if (interval) {
+      clearInterval(interval);
+      console.log("[APPROVAL] Cleared background poller");
+    }
+
+    updateStepUI(approved ? "processing_dashboard" : "processing");
+    show("processing-screen");
+    setTimeout(() => {
+      console.log("[APPROVAL] Resuming main polling...");
+      pollStatus();
+    }, 5000);
+  }
+  async function approvedashboard(approved) {
+    if (approved) dashboardApproved = true;
+    const feedback = document.getElementById("dashboard-feedback").value;
+    document.querySelector("button[onclick='approvedashboard(true)']").disabled = true;
+    document.querySelector("button[onclick='approvedashboard(false)']").disabled = true;
+    console.log("[APPROVAL] Sending dashboard approval...");
+    const res = await fetch(`${API}/approve_dashboard/${jobid}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved, feedback })
+    });
+    const data = await res.json();
+    console.log("[APPROVAL] Dashboard approved, waiting 3s for backend to process...");
+    if (interval) {
+      clearInterval(interval);
+      console.log("[APPROVAL] Cleared background poller");
+    }
+
+    updateStepUI(approved ? "processing_final" : "processing_dashboard");
+    show("processing-screen");
+    setTimeout(() => {
+      console.log("[APPROVAL] Resuming main polling...");
+      pollStatus();
+    }, 5000);
+  }
+  const screens = ["upload-screen", "processing-screen", "report-screen", "dashboard-screen", "completed-screen"];
+  function show(id) {
+    screens.forEach(s => document.getElementById(s).classList.toggle("hidden", s !== id));
+  }
+  async function showCompleted() {
+    document.getElementById("dl-report").href = `${API}/download_report/${jobid}`;
+    const dashBtn = document.getElementById("dl-dashboard");
+    if (noDashboard) {
+      dashBtn.outerHTML = `<div id="dl-dashboard" class="flex items-center gap-2 bg-red-900/30 border border-red-700 text-red-400 px-6 py-2 rounded-xl font-semibold text-sm">⚠ No dashboard could be created for this data</div>`;
+    } else {
+      dashBtn.href = `${API}/download_dashboard/${jobid}`;
+    }
+    show("completed-screen");
+    document.getElementById('chat-messages').classList.remove("hidden");
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        const res = await fetch(`${API}/chat_with_argus/${jobid}`, {
+          method: 'POST',
+          headers: { 'Content-type': "application/json" },
+          body: JSON.stringify({ message: "startup_greeting" })
+        });
+        const data = await res.json();
+        if (data.response) {
+          appendChat("assistant", data.response);
+          chatSuccess = true;
+          break;
+        }
+        if (data.error === "Job not completed yet.") {
+          console.log(`[CHAT] Attempt ${attempt + 1}: Job not ready yet, retrying in 2s...`);
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
+        }
+        appendChat("assistant", data.error || "Something went wrong.");
+        chatSuccess = true;
+        break;
+      } catch (err) {
+        console.error(`[CHAT] Attempt ${attempt + 1} error:`, err);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    if (!chatSuccess) {
+      appendChat("assistant", "👋 Hello! I'm ready to help you explore your analysis results. What would you like to know?");
+    }
+  }
+  async function sendchat() {
+    const input = document.getElementById('chat-input');
+    const message = document.getElementById('chat-input').value
+    const box = document.getElementById('chat-messages');
+    box.classList.remove("hidden");
+    if (!message) {
+      alert("No message!");
+      return;
+    }
+    input.value = "";
+    appendChat("user", message);
+    const res = await fetch(`${API}/chat_with_argus/${jobid}`, {
+      method: 'POST',
+      headers: { 'Content-type': "application/json" },
+      body: JSON.stringify({ message })
+    });
+    const data = await res.json();
+    appendChat("assistant", data.response || data.error);
+    const EXIT_PHRASES = ["exit", "bye", "goodbye", "quit", "thanks", "thank you", "done"];
+    if (EXIT_PHRASES.includes(message.toLowerCase())) {
+      input.disabled = true;
+      input.placeholder = "Chat ended.";
+      document.querySelector("button[onclick='sendchat()']").disabled = true;
+    }
+  }
+  async function appendChat(role, text) {
+    const box = document.getElementById("chat-messages");
+    const div = document.createElement("div");
+    const isMe = role === "user";
+    div.className = `px-4 py-2 rounded-xl text-sm max-w-[80%] ${isMe ? "self-end bg-[#c4622d] text-[#f5d9c8]"
+      : "self-start bg-[#2E1A10] border border-[#3d2318] text-[#9a7060]"
+      }`;
+
+    try {
+      if (role === "assistant" && typeof marked !== 'undefined' && marked.parse) {
+        div.innerHTML = marked.parse(text);
+      } else {
+        div.textContent = text;
+      }
+    } catch (err) {
+      console.error("Error rendering message:", err);
+      div.textContent = text;
+    }
+
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+  function resetApp() {
+    jobid = null;
+    selectedFile = null;
+    noDashboard = false;
+    reportApproved = false;
+    dashboardApproved = false;
+    dropLabel.textContent = "Click a file or drop";
+    document.getElementById("chat-messages").innerHTML = "";
+    document.getElementById("report-feedback").value = "";
+    document.getElementById("dashboard-feedback").value = "";
+    const chatInput = document.getElementById("chat-input");
+    if (chatInput) {
+      chatInput.disabled = false;
+      chatInput.placeholder = "Ask something about your data...";
+    }
+    const sendBtn = document.querySelector("button[onclick='sendchat()']");
+    if (sendBtn) {
+      sendBtn.disabled = false;
+    }
+    const dashEl = document.getElementById("dl-dashboard");
+    if (dashEl && dashEl.tagName !== "A") {
+      dashEl.outerHTML = `<a id="dl-dashboard" href="outputs/dashboard.html"
+        class="bg-[#2E1A10] border border-[#C97A3B] text-[#D97736] px-6 py-2 rounded-xl font-semibold hover:bg-[#3a241a]">⬇
+        Download Dashboard</a>`;
+    }
+    show("upload-screen");
+  }
+</script>
