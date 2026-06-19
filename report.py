@@ -2,6 +2,7 @@ import numpy as np
 import markdown
 import pdfkit
 import json
+import shutil
 from langsmith import traceable
 from helper import retry,clean_report
 from crypto import decryption
@@ -172,6 +173,7 @@ def report_generator(report,output_path="outputs/report.pdf"):
         'no-outline': None,
         'enable-local-file-access': None
     }
-    config = pdfkit.configuration(wkhtmltopdf='C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe')
-    pdfkit.from_string(html, output_path, options=options, configuration=config)
+    wkhtmltopdf_path=shutil.which("wkhtmltopdf")
+    config=pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
+    pdfkit.from_string(html, output_path, configuration=config)
     return output_path
