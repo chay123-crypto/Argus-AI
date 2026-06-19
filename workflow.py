@@ -52,7 +52,7 @@ graph.add_conditional_edges(
         "revise_charts": "node_9",
     }
 )
-memory=MmemorySaver()
+memory=MemorySaver()
 
 pipeline = graph.compile(
     checkpointer=memory,
