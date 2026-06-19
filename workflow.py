@@ -1,6 +1,5 @@
 from langgraph.graph import StateGraph,END
-import sqlite3
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from agent import AgentState
 from agent import node_profiler,node_analyser,node_anonymiser,node_data_analyser,node_query,node_search,node_reasoner,node_reporter,node_plotdecider,node_dashboard,node_reportgen,human_inloop_report,human_inloop_dashboard,should_proceed_dashboard,check_error,should_proceed_report
 
@@ -53,12 +52,7 @@ graph.add_conditional_edges(
         "revise_charts": "node_9",
     }
 )
-conn = sqlite3.connect(
-    "checkpoints.db",
-    check_same_thread=False
-)
-
-memory = SqliteSaver(conn)
+memory=MmemorySaver()
 
 pipeline = graph.compile(
     checkpointer=memory,
