@@ -46,7 +46,7 @@
         . . .</h2>
       <p class="text-[#9a7060] text-sm lg:ps-20 mb-6 lg:mb-0 text-center lg:text-left">Upload a CSV to begin the
         pipeline</p>
-      <a href="http://localhost:7860/sample_sales"
+      <a href="/sample_sales"
         class="flex items-center justify-center h-[40px] w-[90%] lg:w-[500px] max-w-[500px] bg-[#2E1A10] border border-[#C97A3B] text-[#D97736] text-sm lg:mt-4 lg:ms-20 rounded-lg hover:bg-[#3a241a] hover:border-[#D97736] hover:text-[#ff9955] transition duration-200">
         📥 Download sample_sales.csv
       </a>
@@ -144,7 +144,7 @@ transition-all duration-200">
     window.marked = { parse: (text) => `<p>${text}</p>` };
   }
   let selectedFile = null;
-  let API = "http://localhost:7860"
+  let API=window.location.origin
   let jobid = null;
   let interval = null;
   let noDashboard = false;
