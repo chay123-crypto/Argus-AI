@@ -113,7 +113,7 @@ EXAMPLE:
         word_count = len(report.split())
         print(f"Attempt {attempt+1}: {word_count} words")
         
-        if word_count>=1500:
+        if word_count>=1000:
             break
         
         if attempt<max_attempts-1:
