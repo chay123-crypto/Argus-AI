@@ -7,12 +7,16 @@ import os
 
 cerebras_llm=ChatCerebras(
     model=CEREBRAS_MODEL,
-    cerebras_api_key=os.environ["CEREBRAS_API_KEY"],temperature=TEMPERATURE)
+    cerebras_api_key=os.environ["CEREBRAS_API_KEY"],temperature=TEMPERATURE,max_tokens=2048)
+
+fallback_llm=ChatGroq(
+    model="qwen/qwen3.8-27b",
+    groq_api_key=os.environ.get("GROQ_API_KEY", ""),temperature=TEMPERATURE,max_tokens=2048)
 
 groq_llm=ChatGroq(
-    model=GROQ_MODEL,groq_api_key=os.environ["GROQ_API_KEY"],temperature=TEMPERATURE)
+    model=GROQ_MODEL,groq_api_key=os.environ["GROQ_API_KEY"],temperature=TEMPERATURE,max_tokens=2048)
 
-llm=cerebras_llm.with_fallbacks([groq_llm])
-chat_llm=groq_llm.with_fallbacks([cerebras_llm])
+llm=groq_llm.with_fallbacks([cerebras_llm])
+chat_llm=groq_llm.with_fallbacks([fallback_llm])
 
 set_llm_cache(SQLiteCache(database_path=CACHE_PATH))
