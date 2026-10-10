@@ -111,9 +111,9 @@ COLUMN NAMES: {imp_cols}
 
 underscores not spaces. No variation allowed.
     """
-    response=llm.invoke(prompt)
+    response=llm.bind(response_format={"type":"json_object"}).invoke(prompt)
     response=safe_parse(response.content)
-    key_cols=response['Key_Metrics_to_watch']
+    key_cols=response.get('Key_Metrics_to_watch',[])
     return response,key_cols
 
 def critical_info(llm,profiler):
@@ -160,8 +160,10 @@ Example: ['EmployeeName', 'OperatorID', 'CustomerEmail']
 @traceable(name='search_queries')
 @retry(max_attempts=3,delay=3,backoff=3,exceptions=(Exception,))
 def search_queries(llm,domain,internal_findings): 
-    focus=internal_findings['investigation_focus']
-    issues=internal_findings['critical_issues']
+    focus=internal_findings.get('investigation_focus', [])
+    print("Focus:",focus)
+    issues=internal_findings.get('critical_issues', [])
+    print("issues:",issues)
     issue_details = []
     for i, issue in enumerate(issues): 
         issue_details.append(f"""
@@ -179,7 +181,7 @@ CRITICAL ISSUES TO RESEARCH:
 {''.join(issue_details)}
 
 INVESTIGATION FOCUS AREAS:
-{json.dumps(focus[:3], indent=2)}
+{json.dumps(focus[:3])}
 
 GOOD EXAMPLES FOR YOUR ISSUES:
 For Outliers in Quantity:
@@ -236,13 +238,12 @@ Strictly output only a valid JSON array like this:
   "Query 2 here",
   "Query 3 here",
   "Query 4 here",
-  "Query 5 here",
-  "Query 6 here"
+  "Query 5 here"
 ]
 "Return ONE single flat JSON array containing ALL queries together. Do NOT group by issue. Do NOT return multiple arrays."
 No other text. No markdown. No backticks."""
 
-    response=llm.invoke(prompt)
+    response=llm.bind(max_tokens=500).invoke(prompt)
     try:
         content=response.content 
         return safe_parse(content)  
@@ -269,24 +270,25 @@ def web_search(queries):
     search_client=TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
     for query in queries:
         result=search_client.search(query=query.strip(),max_results=3,search_depth="basic")
-        results.append({'query':query,'response':result})
-    return clean_results(results)
+        for r in result.get('results',[]):
+             results.append({'query': query,'content': r.get('content', '')[:200], 'url': r.get('url', '')})
+    return results
 
 @traceable(name='causal_reasoning')
 @retry(max_attempts=3,delay=3,backoff=3,exceptions=(Exception,))
 def causal_reasoning(llm,domain_info,interpreted_findings,cleaned_results):
     internal={
-        'critical_issues':interpreted_findings['critical_issues'],
-        'root_cause_hypotheses':interpreted_findings['root_cause_hypotheses'],
-        'executive_summary':interpreted_findings['executive_summary']
+        'critical_issues':interpreted_findings.get('critical_issues',[]),
+        'root_cause_hypotheses':interpreted_findings.get('root_cause_hypotheses',[]),
+        'executive_summary':interpreted_findings.get('executive_summary',[])
     }
-    external_block=json.dumps(cleaned_results, indent=2) if cleaned_results else "NO EXTERNAL RESEARCH AVAILABLE"
+    external_block=json.dumps(cleaned_results) if cleaned_results else "NO EXTERNAL RESEARCH AVAILABLE"
     prompt=f"""You are a causal inference specialist. Evaluate whether the available evidence supports,
 partially supports,contradicts or is insufficient to infer causality. Never state a causal relationship as fact unless both
-internal evidence and external evidence support it.
+internal evidence and external evidence support it. Ensure the reasoning does not exceed a maximum of 700 words.
 INPUTS:
 Domain: {domain_info}
-Internal Findings: {json.dumps(internal, indent=2, default=str)}
+Internal Findings: {json.dumps(internal, default=str)}
 External Research: {external_block}
 
 FOR EACH critical issue, complete all 4 gates:
@@ -325,6 +327,7 @@ industry benchmarks or other target metrics found on external research. If a cla
 -If internal evidence and external research disagree preserve both,explain why. Do NOT average them and set verdict="contradicted".
 - If external research is unavailable, set verdict="no_external_evidence" and keep all fields except verdict null
 
+CONSTRAINT: The output should contain a maximum of 700 words strictly.
 OUTPUT:
 {{
   "causal_connections": [
@@ -344,10 +347,10 @@ OUTPUT:
       "verdict": "<supported|contradicted|no_external_evidence>"
     }}
   ],
-  "overall_diagnosis": "<3 sentences max: dominant causal story, confidence levels, highest uncertainty link>",
+  "overall_diagnosis": "<2 sentences max: dominant causal story, confidence levels, highest uncertainty link>",
   "meta_assessment": {{
     "binding_constraint": "<single data gap most limiting analysis>",
-    "validation_sequence": ["<step 1>", "<step 2>", "<step 3>"]
+    "validation_sequence": ["<step 1>", "<step 2>"]
   }},
   "evidence_strength": {{
     "internal": "<Strong/Moderate/Weak>: <one sentence justification>",
@@ -355,6 +358,6 @@ OUTPUT:
     "overall": "<Strong/Moderate/Weak>: <one sentence justification>"
   }}
 }}"""
-    response=llm.invoke(prompt)
+    response=llm.bind(max_tokens=2048).invoke(prompt)
     return safe_parse(response.content)
 

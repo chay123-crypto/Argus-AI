@@ -151,25 +151,8 @@ def render_charts(inputs,df):
     return figs
 
 def validate_charts(chart_recs,df):
-    if isinstance(chart_recs, str):
-        try:
-            chart_recs = json.loads(chart_recs)
-        except Exception:
-            chart_recs = safe_parse(chart_recs)
-    if isinstance(chart_recs, dict):
-        chart_recs = chart_recs.get('charts', [chart_recs])
-    if not isinstance(chart_recs, list):
-        return []
-
     valid=[]
     for chart in chart_recs:
-        if isinstance(chart, str):
-            try:
-                chart = json.loads(chart)
-            except Exception:
-                continue
-        if not isinstance(chart, dict):
-            continue
         ct=chart.get('chart_type')
         x=chart.get('x')
         y=chart.get('y')
@@ -287,7 +270,7 @@ RESPOND ONLY WITH VALID JSON (no markdown, no explanation):
   {{"chart_type": "histogram", "x": "revenue", "y": null, "z": null, "color": null, "priority": 2, "reason": "..."}},
   ...
 ]"""
-    response = llm.bind(max_tokens=1500).invoke(prompt)
+    response = llm.bind(max_tokens=1000).invoke(prompt)
     charts = safe_parse(response.content)
     return charts
 

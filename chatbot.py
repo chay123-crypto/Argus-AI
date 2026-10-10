@@ -7,17 +7,14 @@ def chatbot_followup(result,chat_llm,chat_history,user_message):
 
 Domain: {result['domain_info']}
 Key Metrics: {result['key_cols']}
-Raw Findings:{result['raw_findings']}
-Findings: {result['interpreted_findings']}
-Causal Reasoning: {result['causal_reasoning']}
 Report: {result['report']}
 Charts : {result['charts']}
 Rules:
 - Only use numbers that exist in the context above
 - If something isn't in the context, say so
-- Be concise and specific"""
+- Be short and specific"""
     if len(chat_history)==0:
-        greet_prompt=f"""On startup, Greet the user with a warm tone,and provide 2 to 3 lines summary of of what data you analysed and how you can help the user.
+        greet_prompt=f"""On startup, Greet the user with a warm tone,and provide 1 to 2 lines summary of of what data you analysed and how you can help the user.
         Be friendly and concise and ask if they have questions.Instruct the user to type 'exit' if they wan to leave the chat."""
         new_prompt=greet_prompt+chat_prompt
         greeting=llm.invoke([

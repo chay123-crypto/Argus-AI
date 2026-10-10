@@ -17,7 +17,7 @@ def report_maker(llm, key, mapping_log, reasoning, internal_finding, domain, fee
     
     feedback_section=f"\nREVISION FEEDBACK: {feedback}\nAddress this feedback specifically in the revised report.\n" if feedback else ""
 
-    prompt=f"""You are a BI analyst writing a data quality report for C-suite executives.
+    prompt=f"""You are a Senior BI analyst writing a data quality report for C-suite executives.
 
 INPUTS:
 Domain Label:{domain_label}
@@ -30,7 +30,7 @@ MANDATORY: The Causal Reasoning input contains external_evidence fields with rea
 You MUST use these in the Root Cause Analysis section.
 For each issue, cite the external_evidence exactly like this:
 "[External Research: <source query> — <finding>]"
-If you do not cite external evidence for at least 3 issues, your report FAILS quality gates.
+If you do not cite external evidence for at least 2 to 3 issues, your report FAILS quality gates.
 
 RULES (apply to every sentence):
 1. Every claim cites an exact number from findings. No vague words (high/notable/significant/improve/analyze).
@@ -41,14 +41,16 @@ industry benchmarks or other target metrics found on external research. If a cla
 5. Severity: HIGH=blocks analytics/breaks systems | MEDIUM=reduces accuracy | LOW=optimization.
 6. No invented numbers. Only use values present in findings.
 7. Be decisive: "Primary driver is X" not "may be caused by X".
-8. Word count: MINIMUM 1500 words. Count before submitting.
+8. Word count: MINIMUM 800 words and MAXIMUM 900 words. Count before submitting.
 9.When computing target from current→target, use: target = current × (1 - reduction%). Do not approximate.
 10.Integrate external research findings as natural prose, never as raw citation brackets.
+11.Format densely. Do not use double spacing, excessive newlines, or padding between bullet points. Use standard, compact markdown.
+
 
 OUTPUT — return ONLY this markdown structure, no preamble, no code blocks:
 
 # Executive Summary
-[250-300 words. Top 5 issues with exact evidence + 1 key action with owner/timeline/target.]
+[100-150 words. Top 3 issues with exact evidence + 1 key action with owner/timeline/target.]
 
 # Critical Issues
 ## [Issue Name]
@@ -63,7 +65,7 @@ OUTPUT — return ONLY this markdown structure, no preamble, no code blocks:
 [Per issue: mechanism→evidence ruling out alternatives → business impact link]
 
 # Recommended Actions
-[Max 5 actions, ordered by priority]
+[Max 3 actions, ordered by priority]
 **Action N: [Title]** (Owner: [Team], Timeline: [X days], Priority: HIGH/MEDIUM)
 - Objective: [problem solved + current→target metric]
 - Phase 1 ([X days]): [specific step]
@@ -83,11 +85,11 @@ BAD(invented baseline not in findings):
 
 GOOD(uses only numbers from findings, shows calculation):
 "Success Metric: Reduce Amount outliers by 50% (from 4,076 to 2,038)"
-— CORRECT. 4,076 comes from outlier_detection findings. Target = 4,076 × (1 - 0.50) = 2,038.
+— CORRECT. 4,076 comes from outlier_detection findings. Target = 2,038.
 
 ANOTHER GOOD EXAMPLE:
 "Success Metric: Reduce missing CustomerID from 24.93% to 12.47% (50% reduction)"
-— CORRECT. 24.93% comes from profiler null_percent. Target = 24.93 × (1 - 0.50) = 12.465 ≈ 12.47%.
+— CORRECT. 24.93% comes from profiler null_percent. Target = 12.47%.
 
 RULE: 
 - The starting number MUST exist verbatim in findings or profiler.
@@ -109,18 +111,18 @@ EXAMPLE:
 ## 90 Days"""
     max_attempts=3
     for attempt in range(max_attempts):
-        report=llm.invoke(prompt).content
+        report=llm.bind(max_tokens=3000).invoke(prompt).content
         word_count = len(report.split())
         print(f"Attempt {attempt+1}: {word_count} words")
         
-        if word_count>=1000:
+        if word_count>=800:
             break
         
         if attempt<max_attempts-1:
             print(f"Report too short ({word_count} words). Regenerating with expansion prompt...")
-            prompt+=f"\n\nPREVIOUS ATTEMPT WAS {word_count} WORDS — TOO SHORT. You must write at least 1500 words. Expand root cause analysis and action phases with more specific detail. Do not add filler — add substance."
+            prompt+=f"\n\nPREVIOUS ATTEMPT WAS {word_count} WORDS — TOO SHORT. You must write at least 800 words. Expand root cause analysis and action phases with more specific detail. Do not add filler — add substance."
     else:
-        print(f"Warning: Could not reach 1500 words after {max_attempts} attempts. Using last generated report ({word_count} words).")
+        print(f"Warning: Could not reach 800 words after {max_attempts} attempts. Using last generated report ({word_count} words).")
 
     for display,real in decrypt_map.items():
         report=report.replace(display,real)  
@@ -173,7 +175,7 @@ def report_generator(report,output_path="outputs/report.pdf"):
         'no-outline': None,
         'enable-local-file-access': None
     }
-    wkhtmltopdf_path=shutil.which("wkhtmltopdf")
-    config=pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
+    wkhtmltopdf_path = shutil.which("wkhtmltopdf")
+    config = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path)
     pdfkit.from_string(html, output_path, configuration=config)
     return output_path
