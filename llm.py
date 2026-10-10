@@ -10,7 +10,7 @@ cerebras_llm=ChatCerebras(
     cerebras_api_key=os.environ["CEREBRAS_API_KEY"],temperature=TEMPERATURE,max_tokens=2048)
 
 fallback_llm=ChatGroq(
-    model="qwen/qwen3.8-27b",
+    model="llama-3.1-8b-instant",
     groq_api_key=os.environ.get("GROQ_API_KEY", ""),temperature=TEMPERATURE,max_tokens=2048)
 
 groq_llm=ChatGroq(

@@ -151,8 +151,25 @@ def render_charts(inputs,df):
     return figs
 
 def validate_charts(chart_recs,df):
+    if isinstance(chart_recs, str):
+        try:
+            chart_recs = json.loads(chart_recs)
+        except Exception:
+            chart_recs = safe_parse(chart_recs)
+    if isinstance(chart_recs, dict):
+        chart_recs = chart_recs.get('charts', [chart_recs])
+    if not isinstance(chart_recs, list):
+        return []
+
     valid=[]
     for chart in chart_recs:
+        if isinstance(chart, str):
+            try:
+                chart = json.loads(chart)
+            except Exception:
+                continue
+        if not isinstance(chart, dict):
+            continue
         ct=chart.get('chart_type')
         x=chart.get('x')
         y=chart.get('y')
@@ -217,7 +234,7 @@ def deciding_plots(llm,df,findings, columns, key_cols, feedback=None):
 REVISION FEEDBACK: {feedback}
 Address this feedback specifically in your chart selection.""" if feedback else ""
     
-    prompt=f"""You are a senior data analyst. Select exactly 6 charts for a BI dashboard.
+    prompt=f"""You are a senior data analyst. Select exactly 5 charts for a BI dashboard.
 
 REQUIRED (4 charts):
 1. stacked_bar: x=category, y=metric, color=DIFFERENT_category
@@ -225,7 +242,7 @@ REQUIRED (4 charts):
 3. correlation_heatmap: 3. correlation_heatmap: x=null, y=null, z=null (auto-uses all numeric columns)
 4. histogram: x=numeric_metric (distribution)
 
-OPTIONAL (2 charts, choose from):
+OPTIONAL (1 charts, choose from):
 - bar, line, scatter, treemap, pareto
 
 STRICT RULES:
@@ -252,7 +269,7 @@ CAUTION:
 Allowed columns: {columns}
 Key metrics: {key_cols}
 
-Data findings: {json.dumps(findings, indent=2, default=str)}
+Data findings: {json.dumps(findings,default=str)}
 
 {feedback_section}
 
@@ -270,14 +287,14 @@ RESPOND ONLY WITH VALID JSON (no markdown, no explanation):
   {{"chart_type": "histogram", "x": "revenue", "y": null, "z": null, "color": null, "priority": 2, "reason": "..."}},
   ...
 ]"""
-    response = llm.invoke(prompt)
+    response = llm.bind(max_tokens=1500).invoke(prompt)
     charts = safe_parse(response.content)
     return charts
 
 @retry(max_attempts=3,delay=3,backoff=3,exceptions=(Exception,))
 def build_dashboard(df,key_cols,inputs,key,mapping_log,domain_info):
     inputs=validate_charts(inputs,df)
-    inputs=inputs[:6]  
+    inputs=inputs[:5]  
 
     if not inputs:
         raise ValueError("No valid charts after validation")
