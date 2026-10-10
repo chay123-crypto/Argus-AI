@@ -1,5 +1,5 @@
 from fastapi import FastAPI,UploadFile,File,Body
-from fastapi.responses import FileResponse,StreamingResponse
+from fastapi.responses import FileResponse,StreamingResponse,RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import aiofiles
@@ -11,6 +11,7 @@ from chatbot import chatbot_followup
 import uuid
 from workflow import pipeline
 import os
+from s3_store import uploading_and_link
 
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("outputs", exist_ok=True)
@@ -40,16 +41,13 @@ async def workflow_runner(job_id: str, filepath: str):
         jobs[job_id]["status"] = "processing"
         config = {"configurable": {"thread_id": job_id}, "recursion_limit": 100}
 
-        # Start the pipeline - it will stop at check_report due to interrupt_before
         result = await asyncio.to_thread(
             pipeline.invoke,
             {'filepath': filepath},
             config=config
         )
 
-        # Loop to handle multiple approval steps
         while True:
-            # Check what node we're paused at
             state = await asyncio.to_thread(pipeline.get_state, config)
             next_nodes = list(state.next) if state and state.next else []
             
@@ -57,33 +55,26 @@ async def workflow_runner(job_id: str, filepath: str):
             print(f"[STATUS CHECK] Next nodes: {next_nodes}")
             print(f"{'='*70}\n")
 
-            # No more nodes = we're done
             if not next_nodes:
                 print("[COMPLETE] No more nodes - workflow finished")
                 break
 
-            # Handle report approval pause
             if "check_report" in next_nodes:
                 print("[PAUSE] Waiting at check_report")
                 jobs[job_id]["status"] = "pending_report"
                 print(f"[STATUS_UPDATE] Set status to pending_report for {job_id}")
-                # Store current state values
                 if state and state.values:
                     jobs[job_id]["result"] = state.values
                 else:
                     jobs[job_id]["result"] = result
-                
-                # Wait for user approval
                 await jobs[job_id]["report_event"].wait()
                 jobs[job_id]["report_event"].clear()
                 
                 approval = jobs[job_id]["approval_response"]
                 print(f"[RECEIVED] Report approval: {approval}")
-                
-                # Set status to processing so frontend doesn't re-show report screen
+
                 jobs[job_id]["status"] = "processing"
                 
-                # Update state with approval
                 await asyncio.to_thread(
                     pipeline.update_state, 
                     config, 
@@ -93,35 +84,29 @@ async def workflow_runner(job_id: str, filepath: str):
                     }
                 )
                 
-                # Resume pipeline - it will run to next interrupt (check_dashboard)
                 print("[RESUME] Continuing pipeline after report approval...")
-                result = await asyncio.to_thread(pipeline.invoke, None, config=config)
+                result=await asyncio.to_thread(pipeline.invoke, None, config=config)
                 print("[RESUMED] Pipeline continued")
                 continue
 
-            # Handle dashboard approval pause
             if "check_dashboard" in next_nodes:
                 print("[PAUSE] Waiting at check_dashboard")
                 jobs[job_id]["status"] = "pending_dashboard"
                 print(f"[STATUS_UPDATE] Set status to pending_dashboard for {job_id}")
-                # Store current state values with charts_html
                 if state and state.values:
                     jobs[job_id]["result"] = state.values
                     print(f"[DEBUG] Stored state values, keys: {list(state.values.keys())}")
                 else:
                     jobs[job_id]["result"] = result
                 
-                # Wait for user approval
                 await jobs[job_id]["dashboard_event"].wait()
                 jobs[job_id]["dashboard_event"].clear()
                 
-                approval = jobs[job_id]["approval_response"]
+                approval=jobs[job_id]["approval_response"]
                 print(f"[RECEIVED] Dashboard approval: {approval}")
                 
-                # Set status to processing so frontend doesn't re-show dashboard screen
                 jobs[job_id]["status"] = "processing"
                 
-                # Update state with approval
                 await asyncio.to_thread(
                     pipeline.update_state, 
                     config, 
@@ -130,30 +115,28 @@ async def workflow_runner(job_id: str, filepath: str):
                         "dashboard_feedback": approval.get("feedback", "")
                     }
                 )
-                
-                # Resume pipeline
                 print("[RESUME] Continuing pipeline after dashboard approval...")
                 result = await asyncio.to_thread(pipeline.invoke, None, config=config)
                 print("[RESUMED] Pipeline continued")
                 continue
 
-            # Unexpected node
             print(f"[WARNING] Unexpected next nodes: {next_nodes}")
             break
 
-        # Check if the final result contains an error
         if isinstance(result, dict) and result.get('error'):
             jobs[job_id]["status"] = "failed"
             jobs[job_id]["result"] = result
             print(f"[ERROR] Pipeline encountered error: {result.get('error')}")
         else:
-            jobs[job_id]["status"] = "completed"
-            jobs[job_id]["result"] = result
+            jobs[job_id]["report_url"]=await asyncio.to_thread(uploading_and_link, "outputs/report.pdf", "application/pdf", f"outputs/{job_id}/report.pdf")
+            jobs[job_id]["dashboard_url"]=await asyncio.to_thread(uploading_and_link, "outputs/dashboard.html", "text/html", f"outputs/{job_id}/dashboard.html")
+            jobs[job_id]["status"]="completed"
+            jobs[job_id]["result"]=result
             print(f"[SUCCESS] Job {job_id} completed successfully!")
 
     except Exception as e:
-        jobs[job_id]["status"] = "failed"
-        jobs[job_id]["result"] = {"error": str(e)}
+        jobs[job_id]["status"]="failed"
+        jobs[job_id]["result"]={"error": str(e)}
         print(f"[ERROR] Job failed: {e}")
         import traceback
         traceback.print_exc()
@@ -189,7 +172,6 @@ def get_status(job_id:str):
     response = {"job_id":job_id, "status": status}
     result = jobs[job_id].get("result", {})
     
-    # Check for errors in result dict regardless of status
     if isinstance(result, dict) and result.get('error'):
         response["status"] = "failed"
         response["error"] = result.get("error", "Unknown error occurred")
@@ -205,6 +187,8 @@ async def download_report(job_id:str):
         return {"error":"Invalid job ID."}
     if jobs[job_id]["status"]!="completed":
         return {"error":"Job not completed yet."}
+    if jobs[job_id].get("report_url"):
+        return RedirectResponse(jobs[job_id]["report_url"])    
     report_path="outputs/report.pdf"
     return FileResponse(path=report_path, media_type="application/pdf", filename="report.pdf")
 
@@ -214,6 +198,8 @@ async def download_dashboard(job_id:str):
         return {"error":"Invalid job ID."}
     if jobs[job_id]["status"]!="completed":
         return {"error":"Job not completed yet."}
+    if jobs[job_id].get("dashboard_url"):
+        return RedirectResponse(jobs[job_id]["dashboard_url"])
     dashboard_path="outputs/dashboard.html"
     return FileResponse(path=dashboard_path, media_type="text/html", filename="dashboard.html")
 
@@ -252,18 +238,15 @@ async def get_dashboard(job_id:str):
         print(f"[DASHBOARD] Job {job_id}: Dashboard not ready (status={status})")
         return {'error':"Dashboard not ready yet."}
     
-    # During pending_dashboard, return charts recommendations
-    if status == 'pending_dashboard':
-        result = jobs[job_id]["result"]
-        print(f"[DASHBOARD] Pending: result keys = {list(result.keys()) if isinstance(result, dict) else 'not a dict'}")
-        # Keep charts as JSON string - don't parse it, just return it as-is
-        charts = result.get("charts", "No charts yet") if isinstance(result, dict) else "No charts yet"
+    if status=='pending_dashboard':
+        result=jobs[job_id]["result"]
+        print(f"[DASHBOARD] Pending: result keys={list(result.keys()) if isinstance(result, dict) else 'not a dict'}")
+        charts=result.get("charts", "No charts yet") if isinstance(result, dict) else "No charts yet"
         print(f"[DASHBOARD] Returning charts as {type(charts).__name__}: {charts[:100] if isinstance(charts, str) else 'not a string'}...")
         return {"dashboard": charts}
     
-    # After completion, return final dashboard
-    dashboard = jobs[job_id]["result"].get("dashboard", {}) if isinstance(jobs[job_id]["result"], dict) else {}
-    return {"dashboard": dashboard}
+    dashboard=jobs[job_id]["result"].get("dashboard", {}) if isinstance(jobs[job_id]["result"], dict) else {}
+    return {"dashboard":dashboard}
 
 @app.post("/approve_report/{job_id}")
 async def approve_report(job_id:str,approval:dict=Body(...)):

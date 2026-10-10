@@ -8,6 +8,50 @@
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    #report-content p {
+      margin: 2px 0;
+    }
+
+    #report-content h1,
+    #report-content h2,
+    #report-content h3 {
+      color: #D97736;
+      margin: 10px 0 3px 0;
+      font-weight: 600;
+    }
+
+    #report-content h1 {
+      font-size: 1.1em;
+    }
+
+    #report-content h2 {
+      font-size: 1em;
+    }
+
+    #report-content h3 {
+      font-size: 0.95em;
+    }
+
+    #report-content ul,
+    #report-content ol {
+      margin: 2px 0;
+      padding-left: 1.2em;
+    }
+
+    #report-content li {
+      margin: 1px 0;
+    }
+
+    #report-content strong {
+      color: #f5d9c8;
+    }
+
+    #report-content hr {
+      border-color: #3d2318;
+      margin: 8px 0;
+    }
+  </style>
 </head>
 
 <body class="bg-[#140604]" style="font-family:'Sora', sans-serif;">
@@ -86,8 +130,9 @@ transition-all duration-200">
   <div id="report-screen"
     class="hidden fixed inset-0 flex flex-col items-center justify-center min-h-screen bg-[#140604] px-8">
     <h2 class="text-[#f5d9c8] text-2xl font-semibold mb-4">Review Report</h2>
-    <pre id="report-content"
-      class="bg-[#24100A] border border-[#3d2318] text-[#9a7060] text-sm p-6 rounded-xl w-full max-w-[700px] overflow-auto max-h-[400px] whitespace-pre-wrap"></pre>
+    <div id="report-content"
+      class="bg-[#24100A] border border-[#3d2318] text-[#9a7060] text-sm p-6 rounded-xl w-full max-w-[700px] overflow-auto max-h-[400px]">
+    </div>
     <textarea id="report-feedback" placeholder="Feedback (optional)..."
       class="bg-[#2E1A10] border border-[#C97A3B] text-[#f5d9c8] text-sm p-3 rounded-xl w-full max-w-[700px] mt-4 h-[80px]"></textarea>
     <div class="flex gap-4 mt-4">
@@ -144,7 +189,7 @@ transition-all duration-200">
     window.marked = { parse: (text) => `<p>${text}</p>` };
   }
   let selectedFile = null;
-  let API=window.location.origin
+  let API = window.location.origin
   let jobid = null;
   let interval = null;
   let noDashboard = false;
